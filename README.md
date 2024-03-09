@@ -33,13 +33,13 @@ To run the Social Network Project locally on your machine, follow these steps:
 1. Clone the repository:
 
     ```bash
-    git clone https://github.com/me50/mijwad7/Social-Network
+    git clone https://github.com/me50/mijwad7/social-network
     ```
 
 2. Navigate to the project directory:
 
     ```bash
-    cd Social-Network
+    cd social-network
     ```
 
 3. Run the Django development server:
