@@ -1,0 +1,76 @@
+{% extends "network/layout.html" %}
+
+{% block body %}
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    function likeHandler(id, liked_posts, like_count) {
+        const btn = document.getElementById(id);
+        const count = document.getElementById(`like-count-${id}`);
+        const currentCount = parseInt(count.textContent);
+
+        const isLiked = liked_posts.includes(id);
+
+        if (liked_posts.includes(id)) {
+            var liked = false;
+        } else {
+            var liked = true;
+        }
+    
+        if (liked === false) {
+            fetch(`/remove_like/${id}`)
+            .then(response => response.json())
+            .then(result => {
+                btn.classList.remove('fa-thumbs-down'); 
+                btn.classList.add('fa-thumbs-up'); 
+                count.textContent = `${currentCount - 1} likes`;
+            });
+        } else {
+            fetch(`/add_like/${id}`)
+            .then(response => response.json())
+            .then(result => {
+                btn.classList.remove('fa-thumbs-up'); 
+                btn.classList.add('fa-thumbs-down'); 
+                count.textContent = `${currentCount + 1} likes`;
+            });
+        }
+    }
+  });
+</script>
+
+{% for post in page_obj %}
+    <div style="margin: 20px 100px 20px 100px;" class="card w-10">
+        <div class="card-body">
+          <a href="{% url 'view_profile' post.author_id %}"><h4 class="card-title">{{ post.author }}</h4></a>
+          <p class="card-text">{{ post.content }}</p>
+          <p style="font-size: 13px;" class="card-subtitle mb-2 text-muted">{{ post.timestamp }}</p>
+          <p id="like-count-{{ post.id }}" class="card-subtitle">{{ post.like_count }} likes</p>
+          {% if post.id in liked_posts %}
+            <button style="background-color: #007bff;" class="btn btn-info fa fa-thumbs-down" onclick="likeHandler('{{ post.id }}', {{ liked_posts }}, {{ like_count }})" id="{{ post.id }}" ></button>
+        {% else %}
+            <button style="background-color: #007bff;" class="btn btn-info fa fa-thumbs-up" id="{{ post.id }}" onclick="likeHandler('{{ post.id }}', {{ liked_posts }}, {{ like_count }})"></button>
+        {% endif %}
+        </div>
+    </div>
+{% endfor %}
+
+<div class="pagination justify-content-center">
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page=1">&laquo; first</a></li>
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">previous</a></li>
+        {% endif %}
+        
+        <li class="page-item disabled">
+            <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        
+        {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">next</a></li>
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">last &raquo;</a></li>
+        {% endif %}
+    </ul>
+</div>
+
+{% endblock %}

@@ -1,0 +1,108 @@
+{% extends "network/layout.html" %}
+
+{% block body %}
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Handle "Edit" button click
+    document.addEventListener('click', function(event) {
+      if (event.target && event.target.matches('.edit-btn')) {
+        const postID = event.target.getAttribute('data-post-id');
+        const postContent = event.target.closest('.card-body').querySelector('.card-text').textContent;
+
+        const textarea = document.createElement('textarea');
+        textarea.className = 'form-control edited-content';
+        textarea.value = postContent;
+
+        event.target.closest('.card-body').querySelector('.card-text').replaceWith(textarea);
+
+        const saveButton = document.createElement('button');
+        saveButton.className = 'btn btn-success save-btn';
+        saveButton.setAttribute('data-post-id', postID);
+        saveButton.textContent = 'Save';
+
+        event.target.replaceWith(saveButton);
+      }
+    });
+
+    // Handle "Save" button click using event delegation
+    document.addEventListener('click', function(event) {
+      if (event.target && event.target.matches('.save-btn')) {
+        const postID = event.target.getAttribute('data-post-id');
+        const editedContent = event.target.closest('.card-body').querySelector('.edited-content').value;
+
+        const csrfToken = getCookie('csrftoken');
+
+        fetch('{% url "edit_post" %}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken
+          },
+          body: `post_id=${postID}&edited_content=${editedContent}`
+        })
+        .then(response => response.json())
+        .then(data => {
+          const cardBody = event.target.closest('.card-body');
+          const newContent = document.createElement('p');
+          newContent.className = 'card-text';
+          newContent.textContent = data.new_content;
+
+          cardBody.querySelector('.edited-content').replaceWith(newContent);
+
+          const editButton = document.createElement('button');
+          editButton.className = 'btn btn-primary edit-btn';
+          editButton.setAttribute('data-post-id', postID);
+          editButton.textContent = 'Edit';
+
+          event.target.replaceWith(editButton);
+        });
+      }
+    });
+  });
+
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+</script>
+    <div style="text-align: center; ">
+        <h2>{{ author.username }}</h2>
+        <pre style="font-family: 'Poppins', sans-serif; font-size:16px"><strong>{{ profile.followed_by.all.count }}</strong> Followers       <strong>{{ profile.follows.all.count }}</strong> Following</pre>             
+        {% if user.is_authenticated and profile.user != user %}
+        <form method="post" action="{% url 'follow' author.id %}">
+            {% csrf_token %}
+            {% if profile not in user_profile.follows.all %}
+                <input style="width: fit-content;" type="submit" value="Follow" class="btn btn-primary">
+            {% else %}
+                <input style="width: fit-content;" type="submit" value="Unfollow" class="btn btn-danger">
+            {% endif %}
+        </form>
+    {% endif %}
+    </div>
+    {% for post in posts %}
+        <div style="margin: 20px 100px 20px 100px;" class="card w-10">
+            <div class="card-body">           
+            <p class="card-text">{{ post.content }}</p>
+            {% if post.author == user %}
+            <button class="btn btn-primary edit-btn" data-post-id="{{ post.id }}">Edit</button>
+            <br>
+            <br>
+            {% endif %} 
+            <p style="font-size: 13px;" class="card-subtitle mb-2 text-muted">{{ post.timestamp }}</p>
+            <p style="font-size: 13px;" class="card-text">{{ post.likes }} Likes</p>
+            </div>
+        </div>
+    {% endfor %}
+{% endblock %}

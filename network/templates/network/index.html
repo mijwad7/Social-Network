@@ -1,0 +1,157 @@
+{% extends "network/layout.html" %}
+
+{% block body %}
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Handle "Edit" button click
+    document.addEventListener('click', function(event) {
+      if (event.target && event.target.matches('.edit-btn')) {
+        const postID = event.target.getAttribute('data-post-id');
+        const postContent = event.target.closest('.card-body').querySelector('.card-text').textContent;
+
+        const textarea = document.createElement('textarea');
+        textarea.className = 'form-control edited-content';
+        textarea.value = postContent;
+
+        event.target.closest('.card-body').querySelector('.card-text').replaceWith(textarea);
+
+        const saveButton = document.createElement('button');
+        saveButton.className = 'btn btn-success save-btn';
+        saveButton.setAttribute('data-post-id', postID);
+        saveButton.textContent = 'Save';
+
+        event.target.replaceWith(saveButton);
+      }
+    });
+
+    // Handle "Save" button click using event delegation
+    document.addEventListener('click', function(event) {
+      if (event.target && event.target.matches('.save-btn')) {
+        const postID = event.target.getAttribute('data-post-id');
+        const editedContent = event.target.closest('.card-body').querySelector('.edited-content').value;
+
+        const csrfToken = getCookie('csrftoken');
+
+        fetch('{% url "edit_post" %}', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken
+          },
+          body: `post_id=${postID}&edited_content=${editedContent}`
+        })
+        .then(response => response.json())
+        .then(data => {
+          const cardBody = event.target.closest('.card-body');
+          const newContent = document.createElement('p');
+          newContent.className = 'card-text';
+          newContent.textContent = data.new_content;
+
+          cardBody.querySelector('.edited-content').replaceWith(newContent);
+
+          const editButton = document.createElement('button');
+          editButton.className = 'btn btn-primary edit-btn';
+          editButton.setAttribute('data-post-id', postID);
+          editButton.textContent = 'Edit';
+
+          event.target.replaceWith(editButton);
+        });
+      }
+    });
+  });
+
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+   
+function likeHandler(id, liked_posts, like_count) {
+    const btn = document.getElementById(id);
+    const count = document.getElementById(`like-count-${id}`);
+    const currentCount = parseInt(count.textContent);
+
+    if (liked_posts.includes(id)) {
+        var liked = false;
+    } else {
+        var liked = true;
+    }
+
+    if (liked === false) {
+        fetch(`/remove_like/${id}`)
+        .then(response => response.json())
+        .then(result => {
+            btn.classList.remove('fa-thumbs-down'); 
+            btn.classList.add('fa-thumbs-up'); 
+            count.textContent = `${currentCount - 1} likes`;
+        });
+    } else {
+        fetch(`/add_like/${id}`)
+        .then(response => response.json())
+        .then(result => {
+            btn.classList.remove('fa-thumbs-up'); 
+            btn.classList.add('fa-thumbs-down'); 
+            count.textContent = `${currentCount + 1} likes`;
+        });
+    }
+}
+
+
+</script>
+
+
+  {% for post in page_obj %}
+    <div style="margin: 20px 100px 20px 100px;" class="card w-10">
+        <div class="card-body">
+          <a href="{% url 'view_profile' post.author_id %}"><h4 class="card-title">{{ post.author }}</h4></a>
+          <p class="card-text">{{ post.content }}</p>
+          <p style="font-size: 13px;" class="card-subtitle mb-2 text-muted">{{ post.timestamp }}</p>
+          <p id="like-count-{{ post.id }}" class="card-subtitle">{{ post.like_count }} likes</p>
+          {% if user.is_authenticated %}
+            {% if post.author == user %}
+            <button class="btn btn-primary edit-btn" data-post-id="{{ post.id }}">Edit</button>
+            <br>
+            <br>
+            {% else %}
+              {% if post.id in liked_posts %}
+                <button style="background-color: #007bff;" class="btn btn-info fa fa-thumbs-down" onclick="likeHandler({{ post.id }}, {{ liked_posts }}, {{ like_count }})" id="{{ post.id }}" ></button>
+              {% else %}
+                <button style="background-color: #007bff;" class="btn btn-info fa fa-thumbs-up" id="{{ post.id }}" onclick="likeHandler({{ post.id }}, {{ liked_posts }}, {{ like_count }})"></button>
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+
+    {% endfor %}
+
+    <div class="pagination justify-content-center">
+      <ul class="pagination">
+          {% if page_obj.has_previous %}
+              <li class="page-item"><a class="page-link" href="?page=1">&laquo; first</a></li>
+              <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">previous</a></li>
+          {% endif %}
+  
+          <li class="page-item disabled">
+              <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+          </li>
+  
+          {% if page_obj.has_next %}
+              <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">next</a></li>
+              <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">last &raquo;</a></li>
+          {% endif %}
+      </ul>
+    </div>
+
+{% endblock %}
